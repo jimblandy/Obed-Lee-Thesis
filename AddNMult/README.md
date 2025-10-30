@@ -24,18 +24,26 @@ int main() {
 the program should give you the output "3".
 
 ```
-<program>     -> <declaration> <return> ε
-<return>      -> "return" <sum>
-<declaration> -> <declaration> <let>
+<program>    -> <declaration> <return>
+<declaration>-> <declItem> <declaration> | ε
+<declItem>   -> <let> | <set> | <if>
+<return>     -> "return" <compare>
 
-<let>       -> "let" <varname> "=" <sum>
-<sum>       -> <prod> <sum'>
-<sum'>      -> "+" <prod> <sum'> | ε
-<prod>      -> <eval> <prod'>
-<prod'>     -> "*" <eval> <prod'> | ε
-<eval>      -> <number> | <varname> | "(" sum ")"
-<varname>   -> <letter> | <varname> <letter> | <varname> <digit> | <varname> "_"
-<number>    -> <digit> | <number> <digit>
-<letter>    -> "A"…"Z" | "a"…"z"
-<digit>     -> "0"…"9"
+<let>        -> "let" <varname> "=" <compare>
+<set>        -> "set" <varname> "=" <compare>
+
+<if>         -> "if" <compare> "{" <declaration> "}"
+<compare>        -> <sum> <compare'>
+<compare'>       -> ("==" | "!=" | "<" | "<=" | ">" | ">=") <sum> | ε
+
+<sum>        -> <prod> <sum'>
+<sum'>       -> "+" <prod> <sum'> | ε
+<prod>       -> <eval> <prod'>
+<prod'>      -> "*" <eval> <prod'> | ε
+
+<eval>       -> <number> | <varname> | "true" | "false" | "("<compare>")"
+<varname>    -> <letter> | <varname> <letter> | <varname> <digit> | <varname> "_"
+<number>     -> <digit> | <number> <digit>
+<letter>     -> "A"…"Z" | "a"…"z"
+<digit>      -> "0"…"9"
 ```

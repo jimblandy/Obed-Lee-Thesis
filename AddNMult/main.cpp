@@ -2,15 +2,15 @@
 #include "Lexer.h"
 #include "Parser.h"
 #include "CodeGen.h"
+#include <llvm/Support/raw_ostream.h>
 
-using namespace std;
 using namespace addNMult;
 
 int main() {
   std::string input =
-      "let x = 2 * 2 + (4)\n" // 8
-      "let y = x * 2\n" // 16
-      "return x + y"; // 24
+      "let x = 1\n"
+      "set x = x + 41\n"
+      "return x == 42";
   Lexer lexer(input);
   Parser p(lexer);
   try {

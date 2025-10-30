@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <memory>
 #include <unordered_map>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
@@ -11,7 +12,7 @@ namespace addNMult {
 
 class CodeGen {
     public:
-        explicit CodeGen(std::string moduleName = "addNMult");
+        explicit CodeGen(const std::string& moduleName = "addNMult");
         llvm::Module* module() const { return mod.get(); }
         llvm::Function* emit(const Program& program);
 
@@ -25,5 +26,8 @@ class CodeGen {
         llvm::Value* codegenNumber(const NumberExpression* e);
         llvm::Value* codegenVar(const VarExpression* e);
         llvm::Value* codegenBinary(const BinaryExpression* e);
+        llvm::Value* codegenBool(const BoolExpression* e);
+
+        bool emitIf(const IfStatement& s, llvm::Function* function);
     };
 }

@@ -17,10 +17,10 @@ namespace addNMult {
     void Lexer::skipWhitespace() {
         while (i < n) {
             char c = src[i];
-            if (c == ' ' || c == '\t' || c == '\n' || c == '\r') { 
-                i++; 
-            } else { 
-                break; 
+            if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+                i++;
+            } else {
+                break;
             }
         }
     }
@@ -50,12 +50,12 @@ namespace addNMult {
         std::size_t start = i++;
         while (i < n && (isLetter(src[i]) || isDigit(src[i]))) i++;
         std::string s = src.substr(start, i - start);
-        if (s == "let") { 
-            return tokenize(TokenKind::Let, start, s.size());
-        }
-        if (s == "return") {
-            return tokenize(TokenKind::Return, start, s.size());
-        }
+        if (s == "let") return tokenize(TokenKind::Let, start, s.size());
+        if (s == "return") return tokenize(TokenKind::Return, start, s.size());
+        if (s == "set")    return tokenize(TokenKind::Set, start, s.size());
+        if (s == "if")     return tokenize(TokenKind::If, start, s.size());
+        if (s == "true")   return tokenize(TokenKind::True, start, s.size());
+        if (s == "false")  return tokenize(TokenKind::False, start, s.size());
         Token t;
         t.kind = TokenKind::Varname;
         t.stringToken = s;
@@ -80,9 +80,26 @@ namespace addNMult {
         switch (c) {
             case '+': return tokenizeOperator(TokenKind::Plus, 1);
             case '*': return tokenizeOperator(TokenKind::Star, 1);
-            case '=': return tokenizeOperator(TokenKind::Eq, 1);
             case '(': return tokenizeOperator(TokenKind::OpenParen, 1);
             case ')': return tokenizeOperator(TokenKind::CloseParen, 1);
+            case '{': return tokenizeOperator(TokenKind::OpenBrace, 1);
+            case '}': return tokenizeOperator(TokenKind::CloseBrace, 1);
+            case '=': {
+                if (i + 1 < n && src[i+1] == '=') {
+                    Token t = tokenize(TokenKind::IsEqual, i, 2);
+                    i += 2;
+                    return t;
+                }
+                return tokenizeOperator(TokenKind::Eq, 1);
+            }
+            case '!': {
+                if (i + 1 < n && src[i+1] == '=') {
+                    Token t = tokenize(TokenKind::IsNotEqual, i, 2);
+                    i += 2;
+                    return t;
+                }
+                return tokenizeOperator(TokenKind::Invalid, 1);
+            }
             default:  return tokenizeOperator(TokenKind::Invalid, 1);
         }
     }
