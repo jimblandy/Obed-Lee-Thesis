@@ -54,6 +54,7 @@ namespace addNMult {
         if (s == "return") return tokenize(TokenKind::Return, start, s.size());
         if (s == "set")    return tokenize(TokenKind::Set, start, s.size());
         if (s == "if")     return tokenize(TokenKind::If, start, s.size());
+        if (s == "else")   return tokenize(TokenKind::Else, start, s.size());
         if (s == "true")   return tokenize(TokenKind::True, start, s.size());
         if (s == "false")  return tokenize(TokenKind::False, start, s.size());
         Token t;

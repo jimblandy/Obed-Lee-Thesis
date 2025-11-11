@@ -52,9 +52,12 @@ namespace addNMult {
 
     struct IfStatement {
         std::unique_ptr<Expression> cond;
-        std::vector<VarDecl> decls;
-        std::vector<SetStatement> sets;
-        std::vector<IfStatement> ifs;
+        std::vector<VarDecl> thenDecls;
+        std::vector<SetStatement> thenSets;
+        std::vector<IfStatement> thenIfs;
+        std::vector<VarDecl> elseDecls;
+        std::vector<SetStatement> elseSets;
+        std::vector<IfStatement> elseIfs;
     };
 
     struct Program {

@@ -65,7 +65,7 @@ Value* CodeGen::codegenBinary(const BinaryExpression* e) {
 }
 
 llvm::Function* CodeGen::emit(const Program& program) {
-    named.clear(); // To prevent the reuse of objects in 
+    named.clear(); // To prevent the reuse of objects
     auto* functionType = llvm::FunctionType::get(i64Ty(ctx), false);
     auto* function = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage, "addNMult", mod.get());
     auto* entryBlock = llvm::BasicBlock::Create(ctx, "entry", function);
@@ -104,26 +104,37 @@ llvm::Function* CodeGen::emit(const Program& program) {
 
 bool CodeGen::emitIf(const IfStatement& s, Function* function) {
     Value* cond64 = codegen(s.cond.get());
-    if (!cond64) return false;
+    if (!cond64) { 
+        return false; 
+    }
 
     Value* cond = builder->CreateICmpNE(cond64, builder->getInt64(0), "ifcond");
 
+    bool hasElse =
+        !s.elseDecls.empty() ||
+        !s.elseSets.empty()  ||
+        !s.elseIfs.empty();
+    
     BasicBlock* thenBlock = BasicBlock::Create(ctx, "then", function);
+    BasicBlock* elseBlock = hasElse ? BasicBlock::Create(ctx, "else", function) : nullptr;
     BasicBlock* contBlock = BasicBlock::Create(ctx, "ifcont", function);
-
-    builder->CreateCondBr(cond, thenBlock, contBlock);
+    
+    if (hasElse) {
+        builder->CreateCondBr(cond, thenBlock, elseBlock);
+    } else {
+        builder->CreateCondBr(cond, thenBlock, contBlock);
+    }
 
     builder->SetInsertPoint(thenBlock);
-
-    for (const auto& d : s.decls) {
+    for (const auto& d : s.thenDecls) {
         auto* slot = builder->CreateAlloca(i64Ty(ctx), nullptr, d.name);
         named[d.name] = slot;
         Value* init = codegen(d.value.get());
-        if (!init) return false;
+        if (!init) { return false; }
         builder->CreateStore(init, slot);
     }
 
-    for (const auto& st : s.sets) {
+    for (const auto& st : s.thenSets) {
         auto it = named.find(st.name);
         if (it == named.end()) return false;
         Value* v = codegen(st.value.get());
@@ -131,11 +142,33 @@ bool CodeGen::emitIf(const IfStatement& s, Function* function) {
         builder->CreateStore(v, it->second);
     }
 
-    for (const auto& nested : s.ifs) {
+    for (const auto& nested : s.thenIfs) {
         if (!emitIf(nested, function)) return false;
     }
-
     builder->CreateBr(contBlock);
+    
+    if (hasElse) {
+        builder->SetInsertPoint(elseBlock);
+        for (const auto& d : s.elseDecls) {
+            auto* slot = builder->CreateAlloca(i64Ty(ctx), nullptr, d.name);
+            named[d.name] = slot;
+            Value* init = codegen(d.value.get());
+            if (!init) return false;
+            builder->CreateStore(init, slot);
+        }
+        for (const auto& st : s.elseSets) {
+            auto it = named.find(st.name);
+            if (it == named.end()) return false;
+            Value* v = codegen(st.value.get());
+            if (!v) return false;
+            builder->CreateStore(v, it->second);
+        }
+        for (const auto& nested : s.elseIfs) {
+            if (!emitIf(nested, function)) return false;
+        }
+        builder->CreateBr(contBlock);
+    }
+    
     builder->SetInsertPoint(contBlock);
     return true;
 }

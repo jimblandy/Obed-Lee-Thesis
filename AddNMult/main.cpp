@@ -1,16 +1,21 @@
 #include <iostream>
+#include <string>
 #include "Lexer.h"
 #include "Parser.h"
 #include "CodeGen.h"
-#include <llvm/Support/raw_ostream.h>
 
+using namespace std;
 using namespace addNMult;
 
 int main() {
-  std::string input =
-      "let x = 1\n"
-      "set x = x + 41\n"
-      "return x == 42";
+  string input =
+      "let x = 2 + 2\n"
+      "if (x == 4) {"
+      "  set x = 2"
+      "} else {"
+      "  set x = 1"
+      "}"
+      "return x";
   Lexer lexer(input);
   Parser p(lexer);
   try {

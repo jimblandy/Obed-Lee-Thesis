@@ -68,14 +68,37 @@ namespace addNMult {
         while (is(TokenKind::Let) || is(TokenKind::Set) || is(TokenKind::If)) {
             if (is(TokenKind::Let)) {
                 auto decl = parseLet();
-                s.decls.push_back(VarDecl{decl->name, std::unique_ptr<Expression>(decl->value.release())});
+                s.thenDecls.push_back(
+                    VarDecl{decl->name, std::unique_ptr<Expression>(decl->value.release())}
+                );
             } else if (is(TokenKind::Set)) {
-                s.sets.push_back(parseSet());
+                s.thenSets.push_back(parseSet());
             } else {
-                s.ifs.push_back(parseIf());
+                s.thenIfs.push_back(parseIf());
             }
         }
         expect(TokenKind::CloseBrace, "'}'");
+        
+        if (is(TokenKind::Else)) {
+            next();
+            expect(TokenKind::OpenBrace, "'{'");
+
+            while (is(TokenKind::Let) || is(TokenKind::Set) || is(TokenKind::If)) {
+                if (is(TokenKind::Let)) {
+                    auto decl = parseLet();
+                    s.elseDecls.push_back(
+                        VarDecl{decl->name, std::unique_ptr<Expression>(decl->value.release())}
+                    );
+                } else if (is(TokenKind::Set)) {
+                    s.elseSets.push_back(parseSet());
+                } else { 
+                    s.elseIfs.push_back(parseIf());
+                }
+            }
+
+            expect(TokenKind::CloseBrace, "'}'");
+        }
+
         return s;
     }
 
@@ -101,7 +124,7 @@ namespace addNMult {
             e = std::unique_ptr<Expression>(new BinaryExpression(Op::Add, e.release(), r.release()));
         }
         return e;
-        }
+    }
 
     std::unique_ptr<Expression> Parser::parseProdNums() {
         auto e = parseEval();

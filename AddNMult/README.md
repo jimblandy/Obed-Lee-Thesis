@@ -32,9 +32,11 @@ the program should give you the output "3".
 <let>        -> "let" <varname> "=" <compare>
 <set>        -> "set" <varname> "=" <compare>
 
-<if>         -> "if" <compare> "{" <declaration> "}"
-<compare>        -> <sum> <compare'>
-<compare'>       -> ("==" | "!=" | "<" | "<=" | ">" | ">=") <sum> | ε
+<if>         -> "if" <compare> "{" <declaration> "}" <else>
+<else>       -> "else" "{" <declaration> "}" | ε
+
+<compare>    -> <sum> <compare'>
+<compare'>   -> ("==" | "!=" | "<" | "<=" | ">" | ">=") <sum> | ε
 
 <sum>        -> <prod> <sum'>
 <sum'>       -> "+" <prod> <sum'> | ε
