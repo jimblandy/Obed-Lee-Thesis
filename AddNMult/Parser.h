@@ -40,31 +40,33 @@ namespace addNMult {
         BinaryExpression(Op o, Expression* a, Expression* b) : op(o), lhs(a), rhs(b) {}
     };
 
-    struct VarDecl {
+    struct Statement {
+        virtual ~Statement() = default;
+    };
+
+    struct VarDecl : Statement {
         std::string name;
         std::unique_ptr<Expression> value;
     };
 
-    struct SetStatement {
+    struct SetStatement : Statement {
         std::string name;
         std::unique_ptr<Expression> value;
     };
 
-    struct IfStatement {
+    struct ReturnStatement : Statement {
+        std::unique_ptr<Expression> value;
+    };
+
+
+    struct IfStatement : Statement {
         std::unique_ptr<Expression> cond;
-        std::vector<VarDecl> thenDecls;
-        std::vector<SetStatement> thenSets;
-        std::vector<IfStatement> thenIfs;
-        std::vector<VarDecl> elseDecls;
-        std::vector<SetStatement> elseSets;
-        std::vector<IfStatement> elseIfs;
+        std::vector<std::unique_ptr<Statement>> thenBody;
+        std::vector<std::unique_ptr<Statement>> elseBody;
     };
 
     struct Program {
-        std::vector<VarDecl> decls;
-        std::vector<SetStatement> sets;
-        std::vector<IfStatement> ifs;
-        std::unique_ptr<Expression> ret;
+        std::vector<std::unique_ptr<Statement>> statements;
     };
 
     class Parser {
@@ -85,11 +87,13 @@ namespace addNMult {
         std::unique_ptr<Expression> parseSumNums();
         std::unique_ptr<Expression> parseProdNums();
         std::unique_ptr<Expression> parseEval();
-
         std::unique_ptr<Expression> parseCompare();
 
+        std::unique_ptr<Statement> parseStatement();
+        std::unique_ptr<ReturnStatement> parseReturn();
+        std::unique_ptr<IfStatement> parseIf();
+
         SetStatement parseSet();
-        IfStatement parseIf();
     };
 
 }

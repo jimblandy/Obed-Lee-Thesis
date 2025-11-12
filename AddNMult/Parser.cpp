@@ -16,26 +16,10 @@ namespace addNMult {
     std::unique_ptr<Program> Parser::parseProgram() {
         auto program = std::make_unique<Program>();
 
-        while (is(TokenKind::Let) || is(TokenKind::Set) || is(TokenKind::If)) {
-            if (is(TokenKind::Let)) {
-                auto decl = parseLet();
-                program->decls.resize(program->decls.size() + 1);
-                VarDecl& slot = program->decls.back();
-                slot.name = decl->name;
-                slot.value.reset(decl->value.release());
-            } else if (is(TokenKind::Set)) {
-                program->sets.push_back(parseSet());
-            } else {
-                program->ifs.push_back(parseIf());
-            }
+        while (!is(TokenKind::Eof)) {
+            program->statements.push_back(parseStatement());
         }
 
-        expect(TokenKind::Return, "'return'");
-        program->ret = parseCompare();
-
-        if (!is(TokenKind::Eof)) {
-            throw std::runtime_error("unintended token");
-        }
         return program;
     }
 
@@ -46,7 +30,11 @@ namespace addNMult {
         next();
         expect(TokenKind::Eq, "'='");
         auto valueExpr = parseCompare();
-        return std::unique_ptr<VarDecl>(new VarDecl{name, std::unique_ptr<Expression>(valueExpr.release())});
+
+        auto decl = std::unique_ptr<VarDecl>(new VarDecl);
+        decl->name = std::move(name);
+        decl->value = std::move(valueExpr);
+        return decl;
     }
 
     SetStatement Parser::parseSet() {
@@ -56,46 +44,34 @@ namespace addNMult {
         next();
         expect(TokenKind::Eq, "'='");
         auto valueExpr = parseCompare();
-        return SetStatement{std::move(name), std::move(valueExpr)};
+
+        SetStatement s;
+        s.name = std::move(name);
+        s.value = std::move(valueExpr);
+        return s;
     }
 
-    IfStatement Parser::parseIf() {
+    std::unique_ptr<IfStatement> Parser::parseIf() {
         expect(TokenKind::If, "'if'");
         auto condExpr = parseCompare();
         expect(TokenKind::OpenBrace, "'{'");
-        IfStatement s;
-        s.cond = std::move(condExpr);
-        while (is(TokenKind::Let) || is(TokenKind::Set) || is(TokenKind::If)) {
-            if (is(TokenKind::Let)) {
-                auto decl = parseLet();
-                s.thenDecls.push_back(
-                    VarDecl{decl->name, std::unique_ptr<Expression>(decl->value.release())}
-                );
-            } else if (is(TokenKind::Set)) {
-                s.thenSets.push_back(parseSet());
-            } else {
-                s.thenIfs.push_back(parseIf());
-            }
+
+        auto s = std::unique_ptr<IfStatement>(new IfStatement);
+        s->cond = std::move(condExpr);
+
+        while (is(TokenKind::Let) || is(TokenKind::Set) ||
+               is(TokenKind::If) || is(TokenKind::Return)) {
+            s->thenBody.push_back(parseStatement());
         }
         expect(TokenKind::CloseBrace, "'}'");
-        
+
         if (is(TokenKind::Else)) {
             next();
             expect(TokenKind::OpenBrace, "'{'");
-
-            while (is(TokenKind::Let) || is(TokenKind::Set) || is(TokenKind::If)) {
-                if (is(TokenKind::Let)) {
-                    auto decl = parseLet();
-                    s.elseDecls.push_back(
-                        VarDecl{decl->name, std::unique_ptr<Expression>(decl->value.release())}
-                    );
-                } else if (is(TokenKind::Set)) {
-                    s.elseSets.push_back(parseSet());
-                } else { 
-                    s.elseIfs.push_back(parseIf());
-                }
+            while (is(TokenKind::Let) || is(TokenKind::Set) ||
+                   is(TokenKind::If) || is(TokenKind::Return)) {
+                s->elseBody.push_back(parseStatement());
             }
-
             expect(TokenKind::CloseBrace, "'}'");
         }
 
@@ -135,6 +111,36 @@ namespace addNMult {
         }
         return e;
     }
+
+    std::unique_ptr<ReturnStatement> Parser::parseReturn() {
+        expect(TokenKind::Return, "'return'");
+        auto valueExpr = parseCompare();
+        auto result = std::unique_ptr<ReturnStatement>(new ReturnStatement);
+        result->value = std::move(valueExpr);
+        return result;
+    }
+
+    std::unique_ptr<Statement> Parser::parseStatement() {
+        if (is(TokenKind::Let)) {
+            auto decl = parseLet();
+            return std::unique_ptr<Statement>(decl.release());
+        }
+        if (is(TokenKind::Set)) {
+            SetStatement s = parseSet();
+            return std::unique_ptr<Statement>(new SetStatement(std::move(s)));
+        }
+        if (is(TokenKind::If)) {
+            auto ifStmt = parseIf();
+            return std::unique_ptr<Statement>(ifStmt.release());
+        }
+        if (is(TokenKind::Return)) {
+            auto retStmt = parseReturn();
+            return std::unique_ptr<Statement>(retStmt.release());
+        }
+
+        throw std::runtime_error("expected statement");
+    }
+
 
     std::unique_ptr<Expression> Parser::parseEval() {
         switch (token.kind) {

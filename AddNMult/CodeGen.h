@@ -28,6 +28,7 @@ class CodeGen {
         llvm::Value* codegenBinary(const BinaryExpression* e);
         llvm::Value* codegenBool(const BoolExpression* e);
 
+        bool emitStatement(const Statement* s, llvm::Function* function);
         bool emitIf(const IfStatement& s, llvm::Function* function);
     };
 }

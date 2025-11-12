@@ -65,110 +65,104 @@ Value* CodeGen::codegenBinary(const BinaryExpression* e) {
 }
 
 llvm::Function* CodeGen::emit(const Program& program) {
-    named.clear(); // To prevent the reuse of objects
+    named.clear();
     auto* functionType = llvm::FunctionType::get(i64Ty(ctx), false);
-    auto* function = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage, "addNMult", mod.get());
+    auto* function = llvm::Function::Create(
+        functionType, llvm::Function::ExternalLinkage, "addNMult", mod.get()
+    );
+
     auto* entryBlock = llvm::BasicBlock::Create(ctx, "entry", function);
     builder->SetInsertPoint(entryBlock);
-
-    for (const auto& declaration : program.decls) {
-        auto* variableSlot = builder->CreateAlloca(i64Ty(ctx), nullptr, declaration.name);
-        named[declaration.name] = variableSlot;
-        Value* initializerValue = codegen(declaration.value.get());
-        if (!initializerValue) { function->eraseFromParent(); return nullptr; }
-        builder->CreateStore(initializerValue, variableSlot);
+    for (const auto& stmtPtr : program.statements) {
+        if (!emitStatement(stmtPtr.get(), function)) {
+            function->eraseFromParent();
+            return nullptr;
+        }
     }
-
-    for (const auto& s : program.sets) {
-        auto it = named.find(s.name);
-        if (it == named.end()) { function->eraseFromParent(); return nullptr; }
-        Value* v = codegen(s.value.get());
-        if (!v) { function->eraseFromParent(); return nullptr; }
-        builder->CreateStore(v, it->second);
-    }
-
-    for (const auto& s : program.ifs) {
-        if (!emitIf(s, function)) { function->eraseFromParent(); return nullptr; }
-    }
-
-    Value* returnValue = codegen(program.ret.get());
-    if (!returnValue) { function->eraseFromParent(); return nullptr; }
-    builder->CreateRet(returnValue);
-
     if (llvm::verifyFunction(*function, &llvm::errs())) {
         function->eraseFromParent();
         return nullptr;
     }
+
     return function;
 }
 
-bool CodeGen::emitIf(const IfStatement& s, Function* function) {
-    Value* cond64 = codegen(s.cond.get());
-    if (!cond64) { 
-        return false; 
+bool CodeGen::emitStatement(const Statement* s, Function* function) {
+    if (auto* vd = dynamic_cast<const VarDecl*>(s)) {
+        auto* slot = builder->CreateAlloca(i64Ty(ctx), nullptr, vd->name);
+        named[vd->name] = slot;
+        Value* init = codegen(vd->value.get());
+        if (!init) return false;
+        builder->CreateStore(init, slot);
+        return true;
     }
 
-    Value* cond = builder->CreateICmpNE(cond64, builder->getInt64(0), "ifcond");
+    if (auto* st = dynamic_cast<const SetStatement*>(s)) {
+        auto it = named.find(st->name);
+        if (it == named.end()) return false;
+        Value* v = codegen(st->value.get());
+        if (!v) return false;
+        builder->CreateStore(v, it->second);
+        return true;
+    }
 
-    bool hasElse =
-        !s.elseDecls.empty() ||
-        !s.elseSets.empty()  ||
-        !s.elseIfs.empty();
-    
+    if (auto* iff = dynamic_cast<const IfStatement*>(s)) {
+        return emitIf(*iff, function);
+    }
+
+    if (auto* ret = dynamic_cast<const ReturnStatement*>(s)) {
+        Value* v = codegen(ret->value.get());
+        if (!v) return false;
+        builder->CreateRet(v);
+        return true;
+    }
+
+    return false;
+}
+
+bool CodeGen::emitIf(const IfStatement& s, Function* function) {
+    Value* cond = codegen(s.cond.get());
+    if (!cond) return false;
+
+    cond = builder->CreateICmpNE(
+        cond,
+        ConstantInt::get(i64Ty(ctx), 0, false),
+        "ifcond"
+    );
+
     BasicBlock* thenBlock = BasicBlock::Create(ctx, "then", function);
-    BasicBlock* elseBlock = hasElse ? BasicBlock::Create(ctx, "else", function) : nullptr;
+    BasicBlock* elseBlock = nullptr;
     BasicBlock* contBlock = BasicBlock::Create(ctx, "ifcont", function);
-    
+
+    bool hasElse = !s.elseBody.empty();
     if (hasElse) {
+        elseBlock = BasicBlock::Create(ctx, "else", function);
         builder->CreateCondBr(cond, thenBlock, elseBlock);
     } else {
         builder->CreateCondBr(cond, thenBlock, contBlock);
     }
 
     builder->SetInsertPoint(thenBlock);
-    for (const auto& d : s.thenDecls) {
-        auto* slot = builder->CreateAlloca(i64Ty(ctx), nullptr, d.name);
-        named[d.name] = slot;
-        Value* init = codegen(d.value.get());
-        if (!init) { return false; }
-        builder->CreateStore(init, slot);
+    for (const auto& stmtPtr : s.thenBody) {
+        if (!emitStatement(stmtPtr.get(), function)) return false;
     }
-
-    for (const auto& st : s.thenSets) {
-        auto it = named.find(st.name);
-        if (it == named.end()) return false;
-        Value* v = codegen(st.value.get());
-        if (!v) return false;
-        builder->CreateStore(v, it->second);
-    }
-
-    for (const auto& nested : s.thenIfs) {
-        if (!emitIf(nested, function)) return false;
-    }
-    builder->CreateBr(contBlock);
     
-    if (hasElse) {
-        builder->SetInsertPoint(elseBlock);
-        for (const auto& d : s.elseDecls) {
-            auto* slot = builder->CreateAlloca(i64Ty(ctx), nullptr, d.name);
-            named[d.name] = slot;
-            Value* init = codegen(d.value.get());
-            if (!init) return false;
-            builder->CreateStore(init, slot);
-        }
-        for (const auto& st : s.elseSets) {
-            auto it = named.find(st.name);
-            if (it == named.end()) return false;
-            Value* v = codegen(st.value.get());
-            if (!v) return false;
-            builder->CreateStore(v, it->second);
-        }
-        for (const auto& nested : s.elseIfs) {
-            if (!emitIf(nested, function)) return false;
-        }
+    BasicBlock* thenEnd = builder->GetInsertBlock();
+    if (!thenEnd->getTerminator()) {
         builder->CreateBr(contBlock);
     }
-    
+
+    if (hasElse) {
+        builder->SetInsertPoint(elseBlock);
+        for (const auto& stmtPtr : s.elseBody) {
+            if (!emitStatement(stmtPtr.get(), function)) return false;
+        }
+        BasicBlock* elseEnd = builder->GetInsertBlock();
+        if (!elseEnd->getTerminator()) {
+            builder->CreateBr(contBlock);
+        }
+    }
+
     builder->SetInsertPoint(contBlock);
     return true;
 }

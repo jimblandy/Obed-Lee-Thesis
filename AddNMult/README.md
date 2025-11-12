@@ -24,9 +24,11 @@ int main() {
 the program should give you the output "3".
 
 ```
-<program>    -> <declaration> <return>
-<declaration>-> <declItem> <declaration> | ε
-<declItem>   -> <let> | <set> | <if>
+<program>    -> <declaration> | ε
+
+<statement>   -> <let> | <set> | <if> | <return>
+<declaration> -> <statement> <declaration> | ε
+
 <return>     -> "return" <compare>
 
 <let>        -> "let" <varname> "=" <compare>
