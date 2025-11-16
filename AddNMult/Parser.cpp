@@ -80,12 +80,27 @@ namespace addNMult {
 
     std::unique_ptr<Expression> Parser::parseCompare() {
         auto left = parseSumNums();
-        if (is(TokenKind::IsEqual) || is(TokenKind::IsNotEqual)) {
+        if (is(TokenKind::IsEqual)      || is(TokenKind::IsNotEqual)   ||
+            is(TokenKind::Less)         || is(TokenKind::LessEqual)    ||
+            is(TokenKind::Greater)      || is(TokenKind::GreaterEqual)) {
             TokenKind k = token.kind;
             next();
             auto right = parseSumNums();
-            Op op = (k == TokenKind::IsEqual) ? Op::Equal : Op::NotEqual;
-            return std::unique_ptr<Expression>(new BinaryExpression(op, left.release(), right.release()));
+            Op op;
+            switch (k) {
+                case TokenKind::IsEqual:        op = Op::Equal;                break;
+                case TokenKind::IsNotEqual:     op = Op::NotEqual;             break;
+                case TokenKind::Less:           op = Op::LessThan;             break;
+                case TokenKind::LessEqual:      op = Op::LessThanOrEqual;      break;
+                case TokenKind::Greater:        op = Op::GreaterThan;          break;
+                case TokenKind::GreaterEqual:   op = Op::GreaterThanOrEqual;   break;
+                default:
+                    throw std::runtime_error("invalid compare operator");
+            }
+
+            return std::unique_ptr<Expression>(
+                new BinaryExpression(op, left.release(), right.release())
+            );
         }
         return left;
     }

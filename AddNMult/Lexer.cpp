@@ -92,7 +92,7 @@ namespace addNMult {
                     return t;
                 }
                 return tokenizeOperator(TokenKind::Eq, 1);
-            }
+            } 
             case '!': {
                 if (i + 1 < n && src[i+1] == '=') {
                     Token t = tokenize(TokenKind::IsNotEqual, i, 2);
@@ -100,8 +100,25 @@ namespace addNMult {
                     return t;
                 }
                 return tokenizeOperator(TokenKind::Invalid, 1);
+            } 
+            case '<': {
+                if (i + 1 < n && src[i+1] == '=') {
+                    Token t = tokenize(TokenKind::LessEqual, i, 2);
+                    i += 2;
+                    return t;
+                }
+                return tokenizeOperator(TokenKind::Less, 1);
+            } 
+            case '>': {
+                if (i + 1 < n && src[i+1] == '=') {
+                    Token t = tokenize(TokenKind::GreaterEqual, i, 2);
+                    i += 2;
+                    return t;
+                }
+                return tokenizeOperator(TokenKind::Greater, 1);
             }
-            default:  return tokenizeOperator(TokenKind::Invalid, 1);
+            default:
+                return tokenizeOperator(TokenKind::Invalid, 1);
         }
     }
 }

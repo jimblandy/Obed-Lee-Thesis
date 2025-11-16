@@ -7,7 +7,8 @@ namespace addNMult {
     enum class TokenKind {
         Eof, Let, Return, Varname, Number, Plus, Set, Star, Eq, Invalid, If, Else,
         OpenParen, CloseParen, OpenBrace, CloseBrace,
-        True, False, IsEqual, IsNotEqual
+        True, False, IsEqual, IsNotEqual,
+        Less, LessEqual, Greater, GreaterEqual
     };
 
     struct Token {

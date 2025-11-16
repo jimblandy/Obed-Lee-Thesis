@@ -60,6 +60,22 @@ Value* CodeGen::codegenBinary(const BinaryExpression* e) {
             Value* cmp = builder->CreateICmpNE(L, R, "ne");
             return builder->CreateZExt(cmp, i64Ty(ctx), "cmpne");
         }
+        case Op::LessThan: {
+            Value* cmp = builder->CreateICmpSLT(L, R, "lt");
+            return builder->CreateZExt(cmp, i64Ty(ctx), "cmplt");
+        }
+        case Op::LessThanOrEqual: {
+            Value* cmp = builder->CreateICmpSLE(L, R, "lte");
+            return builder->CreateZExt(cmp, i64Ty(ctx), "cmple");
+        }
+        case Op::GreaterThan: {
+            Value* cmp = builder->CreateICmpSGT(L, R, "gt");
+            return builder->CreateZExt(cmp, i64Ty(ctx), "cmpgt");
+        }
+        case Op::GreaterThanOrEqual: {
+            Value* cmp = builder->CreateICmpSGE(L, R, "gte");
+            return builder->CreateZExt(cmp, i64Ty(ctx), "cmpge");
+        }
     }
     return nullptr;
 }
