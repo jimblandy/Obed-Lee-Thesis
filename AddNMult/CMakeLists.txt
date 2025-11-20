@@ -17,6 +17,7 @@ add_executable(addnmult
   Lexer.cpp
   Parser.cpp
   CodeGen.cpp
+  SemanticAnalyzer.cpp
 )
 
 target_include_directories(addnmult PRIVATE ${LLVM_INCLUDE_DIRS})
